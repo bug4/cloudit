@@ -1,54 +1,91 @@
-// netlify/functions/transform.mjs
+// Netlify Functions v2 style: (req) => Response
 import OpenAI from "openai";
-import { Readable } from "node:stream";
 import { toFile } from "openai/uploads";
 
-function dataUrlToParts(dataUrl) {
-  const match = /^data:(.+?);base64,(.+)$/.exec(dataUrl || "");
-  if (!match) throw new Error("Invalid image data URL.");
-  const mime = match[1];
-  const b64 = match[2];
+function dataUrlToBlobParts(dataUrl) {
+  const m = /^data:(.+?);base64,(.+)$/.exec(dataUrl || "");
+  if (!m) throw new Error("Invalid image data URL.");
+  const mime = m[1];
+  const b64 = m[2];
   const buf = Buffer.from(b64, "base64");
-  const stream = Readable.from(buf);
-  const ext = mime === "image/png" ? "png" :
-              mime === "image/jpeg" ? "jpg" :
-              mime === "image/webp" ? "webp" : null;
+  const ext =
+    mime === "image/png" ? "png" :
+    mime === "image/jpeg" ? "jpg" :
+    mime === "image/webp" ? "webp" : null;
   if (!ext) throw new Error("Unsupported image type. Use PNG/JPEG/WEBP.");
-  return { mime, stream, filename: `upload.${ext}` };
+  // Use Web Blob API (works in Netlify’s v2 runtime)
+  const blob = new Blob([buf], { type: mime });
+  const filename = `upload.${ext}`;
+  return { blob, mime, filename };
 }
 
-export default async (req, res) => {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+const json = (status, body) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" }
+  });
+
+export default async (req, _ctx) => {
   try {
-    const { imageDataURL, prompt } = req.body || {};
-    if (!imageDataURL) return res.status(400).json({ error: "Missing imageDataURL" });
+    if (req.method !== "POST") {
+      return json(405, { error: "Method not allowed" });
+    }
 
-    const effectivePrompt = (prompt && prompt.trim()) ||
-      "I will send you pictures of fictional characters and you will recreate them like they are made of clouds in the sky, realistic style";
+    // ⛽ Required env
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return json(500, { error: "Server not configured: OPENAI_API_KEY missing." });
+    }
 
-    const { mime, stream, filename } = dataUrlToParts(imageDataURL);
+    // Parse JSON body safely
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return json(400, { error: "Invalid JSON body." });
+    }
+    const { imageDataURL } = body || {};
+    if (!imageDataURL) {
+      return json(400, { error: "Missing imageDataURL" });
+    }
+
+    // (Optional) hard limit ~4MB source to avoid Netlify payload limits (~6MB)
+    const approxBytes = imageDataURL.length * 0.75; // rough base64 size
+    if (approxBytes > 4 * 1024 * 1024) {
+      return json(413, { error: "Image too large. Please upload ≤ 4MB." });
+    }
+
+    // Convert data URL to file for OpenAI upload
+    const { blob, mime, filename } = dataUrlToBlobParts(imageDataURL);
+    const apiFile = await toFile(blob, filename, { type: mime });
+
     const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-      organization: process.env.OPENAI_ORG,
+      apiKey,
+      organization: process.env.OPENAI_ORG, // optional
     });
 
-    const apiFile = await toFile(stream, filename, { type: mime });
+    // Fixed “cloudify” prompt (hidden from users)
+    const prompt =
+      "I will send you pictures of fictional characters and you will recreate them like they are made of clouds in the sky, realistic style";
 
-    const response = await openai.images.edit({
+    const r = await openai.images.edit({
       model: "gpt-image-1",
       image: apiFile,
-      prompt: effectivePrompt,
+      prompt,
       size: "1024x1024",
     });
 
-    const b64 = response.data?.[0]?.b64_json;
-    if (!b64) throw new Error("OpenAI returned no image data.");
-    return res.status(200).json({ image: `data:image/png;base64,${b64}` });
+    const b64 = r.data?.[0]?.b64_json;
+    if (!b64) return json(502, { error: "No image returned from model." });
+
+    return json(200, { image: `data:image/png;base64,${b64}` });
   } catch (err) {
-    console.error("Transform error:", err?.status, err?.code, err?.message, err?.response?.data);
-    const msg = err?.response?.data?.error?.message || err?.message || "Failed to generate image.";
-    return res.status(500).json({ error: msg });
+    // Log the full error for Netlify logs
+    console.error("transform error:", err?.status, err?.code, err?.message, err?.response?.data);
+    const msg =
+      err?.response?.data?.error?.message ||
+      err?.message ||
+      "Failed to generate image.";
+    return json(500, { error: msg });
   }
 };
