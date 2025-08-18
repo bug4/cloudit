@@ -170,6 +170,14 @@ export default function App() {
             >
                Support the Dev
             </a>
+            <a
+              className="btn-x"
+              href="https://x.com/i/communities/1957390468272001500/" // <- change to your support link
+              target="_blank"
+              rel="noreferrer"
+            >
+               CloudIt Community
+            </a>
           </div>
         </header>
 
