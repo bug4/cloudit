@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./app.css";
 
-// NOTE: Prompt is enforced on the SERVER (functions/api/transform.js).
-// We keep a local constant only to remind ourselves, but we do not send
-// or render it in the UI anymore.
+// Prompt is enforced on the SERVER (functions/api/transform.js)
 const SERVER_PROMPT =
   "I will send you pictures of fictional characters and you will recreate them like they are made of clouds in the sky, realistic style";
 
@@ -14,8 +12,6 @@ export default function App() {
   const [outImage, setOutImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // keep a usage counter locally (hidden), useful for your own insights
   const [usageCount, setUsageCount] = useState(0);
 
   useEffect(() => {
@@ -39,8 +35,7 @@ export default function App() {
     setError("");
     setFile(f);
     setOutImage(null);
-    const url = URL.createObjectURL(f);
-    setSrcPreview(url);
+    setSrcPreview(URL.createObjectURL(f));
   };
 
   const onFile = (e) => {
@@ -100,12 +95,10 @@ export default function App() {
     try {
       const imageDataURL = await fileToDataURLResized(file, 1024, 0.9);
 
-      // Cloudflare Pages endpoint
       const res = await fetch("/api/transform", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // We no longer send prompt; it’s enforced server-side.
-        body: JSON.stringify({ imageDataURL }),
+        body: JSON.stringify({ imageDataURL }), // prompt enforced server-side
       });
 
       const ct = res.headers.get("content-type") || "";
@@ -116,17 +109,15 @@ export default function App() {
 
       setOutImage(data.image);
 
-      // Update hidden usage count
       const next = usageCount + 1;
       setUsageCount(next);
       try { localStorage.setItem("cloudit-usage", String(next)); } catch {}
 
-      // Fire analytics beacon (no-op if analytics function not configured)
       try {
         const payload = JSON.stringify({
           type: "generation",
           ts: Date.now(),
-          day: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+          day: new Date().toISOString().slice(0, 10),
         });
         navigator.sendBeacon("/api/analytics", new Blob([payload], { type: "application/json" }));
       } catch {}
@@ -146,37 +137,72 @@ export default function App() {
   };
 
   const shareToCommunity = () => {
-    // Replace this with your community link (Discord, Farcaster, etc.)
     window.open("https://x.com/i/communities/1957390468272001500/", "_blank", "noopener,noreferrer");
   };
 
   return (
     <>
-      <div className="clouds" />
-      <div className="container">
+      {/* FULL-SCREEN BACKGROUND VIDEO */}
+      <div
+        className="bg-video-wrap"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          overflow: "hidden",
+          pointerEvents: "none",
+        }}
+        aria-hidden="true"
+      >
+        <video
+          className="bg-video"
+          src="/video.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          style={{
+            position: "absolute",
+            width: "100vw",
+            height: "100vh",
+            objectFit: "cover",
+            top: 0,
+            left: 0,
+          }}
+        />
+        <div
+          className="bg-overlay"
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "radial-gradient(ellipse at center, rgba(0,0,0,0.22), rgba(0,0,0,0.5))",
+          }}
+        />
+      </div>
+
+      {/* IMPORTANT: remove the old clouds layer */}
+      {/* <div className="clouds" />  <-- delete / keep commented out */}
+
+      {/* APP CONTENT ABOVE VIDEO */}
+      <div className="container" style={{ position: "relative", zIndex: 1 }}>
         <header className="header">
           <a className="brand" href="/">
             <div className="logo" />
             <div className="title">cloudit</div>
-            {/* beta badge removed */}
           </a>
           <div className="actions">
-            {/* spending pill removed */}
-            <a
-              className="btn-x"
-              href="https://x.com/bug4sol" // <- change to your support link
-              target="_blank"
-              rel="noreferrer"
-            >
+            <a className="btn-x" href="https://x.com/bug4sol" target="_blank" rel="noreferrer">
               ❤️ Support the Dev
             </a>
             <a
               className="btn-x"
-              href="https://x.com/i/communities/1957390468272001500/" // <- change to your support link
+              href="https://x.com/i/communities/1957390468272001500/"
               target="_blank"
               rel="noreferrer"
             >
-               👥 CloudIt Community
+              👥 CloudIt Community
             </a>
           </div>
         </header>
@@ -212,16 +238,11 @@ export default function App() {
               </div>
 
               <div className="controls">
-                {/* Prompt UI removed */}
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button className="btn" disabled={loading} onClick={transform}>
                     {loading ? "Transforming..." : "Transform"}
                   </button>
-                  <button
-                    className="btn secondary"
-                    disabled={!outImage}
-                    onClick={download}
-                  >
+                  <button className="btn secondary" disabled={!outImage} onClick={download}>
                     Download result
                   </button>
                   <button
@@ -231,7 +252,6 @@ export default function App() {
                     title="Share your result with the community"
                     style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
                   >
-                    {/* Simple community “chat bubbles” icon */}
                     <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
                       <path fill="currentColor" d="M2 11a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1a6 6 0 0 1-6 6H9l-4 3v-3.5A6 6 0 0 1 2 12v-1z"/>
                     </svg>
@@ -243,23 +263,12 @@ export default function App() {
             </div>
 
             <div className="preview" style={{ position: "relative" }}>
-              {/* LEFT preview kept in your design above the result */}
               <div className="imgbox">
-                {srcPreview ? (
-                  <img src={srcPreview} alt="source" />
-                ) : (
-                  <span>Source preview</span>
-                )}
+                {srcPreview ? <img src={srcPreview} alt="source" /> : <span>Source preview</span>}
               </div>
 
-              {/* RESULT preview */}
               <div className="imgbox" style={{ position: "relative" }}>
-                {outImage ? (
-                  <img src={outImage} alt="result" />
-                ) : (
-                  <span>Result will appear here</span>
-                )}
-                {/* Loading overlay/spinner */}
+                {outImage ? <img src={outImage} alt="result" /> : <span>Result will appear here</span>}
                 {loading && (
                   <div
                     style={{
@@ -285,17 +294,12 @@ export default function App() {
                   </div>
                 )}
               </div>
-
-              {/* Footer note removed as requested */}
             </div>
           </div>
         </section>
       </div>
 
-      {/* spinner keyframes (kept here to avoid touching your CSS file) */}
-      <style>
-        {`@keyframes spin { to { transform: rotate(360deg); } }`}
-      </style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </>
   );
 }
