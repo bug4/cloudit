@@ -168,7 +168,7 @@ export default function App() {
               target="_blank"
               rel="noreferrer"
             >
-               Support the Dev
+              ❤️ Support the Dev
             </a>
             <a
               className="btn-x"
@@ -176,7 +176,7 @@ export default function App() {
               target="_blank"
               rel="noreferrer"
             >
-               CloudIt Community
+               👥 CloudIt Community
             </a>
           </div>
         </header>
