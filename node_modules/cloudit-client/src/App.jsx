@@ -147,7 +147,7 @@ export default function App() {
 
   const shareToCommunity = () => {
     // Replace this with your community link (Discord, Farcaster, etc.)
-    window.open("https://your-community.example.com", "_blank", "noopener,noreferrer");
+    window.open("https://x.com/i/communities/1957390468272001500/", "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -164,11 +164,11 @@ export default function App() {
             {/* spending pill removed */}
             <a
               className="btn-x"
-              href="https://buymeacoffee.com/yourname" // <- change to your support link
+              href="https://x.com/bug4sol" // <- change to your support link
               target="_blank"
               rel="noreferrer"
             >
-              💖 Support the Dev
+               Support the Dev
             </a>
           </div>
         </header>
