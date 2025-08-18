@@ -1,10 +1,4 @@
 {
-  "name": "cloudit",
-  "private": true,
-  "workspaces": [
-    "client"
-  ],
-  "dependencies": {
-    "openai": "^4.56.0"
-  }
+  "name": "cloudit-root",
+  "private": true
 }
