@@ -1,278 +1,114 @@
-import React, { useEffect, useRef, useState } from "react";
-import "./app.css";
+import React, { useState } from "react";
 
-const DEFAULT_PROMPT =
-  "I will send you pictures of fictional characters and you will recreate them like they are made of clouds in the sky, realistic style";
-
-const PRICE_PER_IMAGE_1024 = 0.016; // rough estimate per image
-
-export default function App() {
-  const fileInputRef = useRef(null);
+function App() {
   const [file, setFile] = useState(null);
-  const [srcPreview, setSrcPreview] = useState(null);
   const [outImage, setOutImage] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [error, setError] = useState("");
 
-  const [usageCount, setUsageCount] = useState(0);
-  const [spent, setSpent] = useState(0);
-
-  useEffect(() => {
-    try {
-      const saved = Number(localStorage.getItem("cloudit-usage") || "0");
-      setUsageCount(Number.isFinite(saved) ? saved : 0);
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    setSpent(usageCount * PRICE_PER_IMAGE_1024);
-  }, [usageCount]);
-
-  const onPick = () => fileInputRef.current?.click();
-
-  const handleChosenFile = (f) => {
-    if (!["image/png", "image/jpeg", "image/webp"].includes(f.type)) {
-      setError("Please choose a PNG, JPEG, or WEBP image.");
-      return;
-    }
-    if (f.size > 6 * 1024 * 1024) {
-      setError("Please use an image up to ~6MB.");
-      return;
-    }
-    setError("");
-    setFile(f);
-    setOutImage(null);
-    const url = URL.createObjectURL(f);
-    setSrcPreview(url);
-  };
-
-  const onFile = (e) => {
-    const f = e.target.files?.[0];
-    if (f) handleChosenFile(f);
-  };
-
-  const onDrop = (e) => {
-    e.preventDefault();
-    const f = e.dataTransfer.files?.[0];
-    if (f) handleChosenFile(f);
-  };
-
-  const onDragOver = (e) => e.preventDefault();
-
-  // Utility to resize + convert file to base64
-  const fileToDataURLResized = (f, maxSize, quality) =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          let { width, height } = img;
-          if (width > height) {
-            if (width > maxSize) {
-              height *= maxSize / width;
-              width = maxSize;
-            }
-          } else {
-            if (height > maxSize) {
-              width *= maxSize / height;
-              height = maxSize;
-            }
-          }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL("image/jpeg", quality));
-        };
-        img.onerror = reject;
-        img.src = event.target.result;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(f);
+  // helper to downscale before upload
+  async function fileToDataURLResized(file, maxSide = 1024, quality = 0.9) {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = reject;
+      fr.readAsDataURL(file);
     });
 
-  const transform = async () => {
+    const img = document.createElement("img");
+    await new Promise((res, rej) => {
+      img.onload = res;
+      img.onerror = rej;
+      img.src = dataUrl;
+    });
+
+    let { width, height } = img;
+    const scale = Math.min(1, maxSide / Math.max(width, height));
+    const w = Math.max(1, Math.round(width * scale));
+    const h = Math.max(1, Math.round(height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, w, h);
+
+    return canvas.toDataURL("image/jpeg", quality);
+  }
+
+  async function handleTransform() {
     if (!file) {
-      setError("Upload an image first.");
+      setError("Please upload an image first.");
       return;
     }
     setError("");
     setLoading(true);
     setOutImage(null);
+
     try {
+      // resize + convert to dataURL
       const imageDataURL = await fileToDataURLResized(file, 1024, 0.9);
 
-      const res = await fetch("/.netlify/functions/transform", {
+      const res = await fetch("/api/transform", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageDataURL, prompt }),
+        body: JSON.stringify({ imageDataURL }),
       });
 
-      const data = await res.json().catch(() => ({}));
+      const ct = res.headers.get("content-type") || "";
+      const data = ct.includes("application/json") ? await res.json() : {};
       if (!res.ok || !data.image) {
-        throw new Error(data?.error || "Failed to transform.");
+        throw new Error(data?.error || `Server error (${res.status})`);
       }
-      setOutImage(data.image);
 
-      const next = usageCount + 1;
-      setUsageCount(next);
-      try {
-        localStorage.setItem("cloudit-usage", String(next));
-      } catch {}
+      setOutImage(data.image);
     } catch (err) {
       setError(err.message || "Something went wrong.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const download = () => {
-    if (!outImage) return;
-    const a = document.createElement("a");
-    a.href = outImage;
-    a.download = "cloudit.png";
-    a.click();
-  };
-
-  const shareToX = () => {
-    const text = encodeURIComponent(
-      "I just cloudified my profile picture with cloudit ☁️\nTry it here: YOUR_SITE_URL"
-    );
-    const url = `https://twitter.com/intent/tweet?text=${text}`;
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
+  }
 
   return (
-    <>
-      <div className="clouds" />
-      <div className="container">
-        <header className="header">
-          <a className="brand" href="/">
-            <div className="logo" />
-            <div className="title">cloudit</div>
-            <span className="badge">beta</span>
+    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white p-6">
+      <h1 className="text-3xl font-bold mb-6">☁️ Cloud PFP Generator</h1>
+
+      <input
+        type="file"
+        accept="image/*"
+        className="mb-4"
+        onChange={(e) => setFile(e.target.files?.[0] || null)}
+      />
+
+      <button
+        onClick={handleTransform}
+        disabled={loading || !file}
+        className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600"
+      >
+        {loading ? "Generating..." : "Make it Cloudy"}
+      </button>
+
+      {error && <p className="mt-4 text-red-400">{error}</p>}
+
+      {outImage && (
+        <div className="mt-6">
+          <h2 className="text-lg mb-2">Your Cloud Avatar:</h2>
+          <img
+            src={outImage}
+            alt="Generated cloud avatar"
+            className="max-w-xs rounded shadow"
+          />
+          <a
+            href={outImage}
+            download="cloud-avatar.png"
+            className="block mt-3 px-3 py-1 bg-green-600 hover:bg-green-700 rounded"
+          >
+            Download
           </a>
-          <div className="actions">
-            <div
-              className="usage-pill"
-              title="Rough estimate at 1024×1024 price"
-            >
-              <span>
-                {usageCount} {usageCount === 1 ? "image" : "images"}
-              </span>
-              <span className="dot" />
-              <span>~${spent.toFixed(2)}</span>
-            </div>
-            <a
-              className="btn-x"
-              href="https://x.com/your_handle"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 1200 1227"
-                aria-hidden="true"
-              >
-                <path
-                  fill="currentColor"
-                  d="M714 519 1120 0H986L676 389 445 0H0l421 651L72 1227h134l332-428 246 428h445L714 519Zm-117 151-38-63L213 109H374l200 339 37 63 352 595H802l-205-356Z"
-                />
-              </svg>
-              Follow
-            </a>
-          </div>
-        </header>
-
-        <section className="hero">
-          <h1 style={{ marginTop: 0, marginBottom: 6 }}>
-            Cloudify your profile picture ☁️
-          </h1>
-          <div className="subtle" style={{ marginBottom: 16 }}>
-            Upload a PNG/JPG/WEBP. We’ll turn it into a realistic cloud
-            sculpture in the sky.
-          </div>
-
-          <div className="row">
-            <div>
-              <div
-                className="dropzone"
-                onDrop={onDrop}
-                onDragOver={onDragOver}
-                onClick={onPick}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  style={{ display: "none" }}
-                  onChange={onFile}
-                />
-                <p>
-                  <strong>Click to upload</strong> or drag & drop an image
-                </p>
-                <p className="subtle">(Recommended ≤ 6MB)</p>
-              </div>
-
-              <div className="controls">
-                <label style={{ fontSize: 14 }} className="subtle">
-                  Prompt (optional)
-                </label>
-                <textarea
-                  className="input"
-                  rows="3"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                />
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button className="btn" disabled={loading} onClick={transform}>
-                    {loading ? "Transforming..." : "Transform"}
-                  </button>
-                  <button
-                    className="btn secondary"
-                    disabled={!outImage}
-                    onClick={download}
-                  >
-                    Download result
-                  </button>
-                  <button
-                    className="btn secondary"
-                    disabled={!outImage}
-                    onClick={shareToX}
-                  >
-                    Share to X
-                  </button>
-                </div>
-                {error && <div className="error">{error}</div>}
-              </div>
-            </div>
-
-            <div className="preview">
-              <div className="imgbox">
-                {srcPreview ? (
-                  <img src={srcPreview} alt="source" />
-                ) : (
-                  <span>Source preview</span>
-                )}
-              </div>
-              <div className="imgbox">
-                {outImage ? (
-                  <img src={outImage} alt="result" />
-                ) : (
-                  <span>Result will appear here</span>
-                )}
-              </div>
-              <div className="footer">
-                Images are processed server-side via Netlify Functions (your API
-                key stays private).
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-    </>
+        </div>
+      )}
+    </div>
   );
 }
+
+export default App;
