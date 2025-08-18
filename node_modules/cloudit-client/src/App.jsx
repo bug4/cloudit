@@ -60,10 +60,35 @@ export default function App() {
 
   const onDragOver = (e) => e.preventDefault();
 
-  const readAsDataURL = (f) =>
+  // Utility to resize + convert file to base64
+  const fileToDataURLResized = (f, maxSize, quality) =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let { width, height } = img;
+          if (width > height) {
+            if (width > maxSize) {
+              height *= maxSize / width;
+              width = maxSize;
+            }
+          } else {
+            if (height > maxSize) {
+              width *= maxSize / height;
+              height = maxSize;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.onerror = reject;
+        img.src = event.target.result;
+      };
       reader.onerror = reject;
       reader.readAsDataURL(f);
     });
@@ -77,7 +102,7 @@ export default function App() {
     setLoading(true);
     setOutImage(null);
     try {
-      const imageDataURL = await readAsDataURL(file);
+      const imageDataURL = await fileToDataURLResized(file, 1024, 0.9);
 
       const res = await fetch("/.netlify/functions/transform", {
         method: "POST",
@@ -85,13 +110,17 @@ export default function App() {
         body: JSON.stringify({ imageDataURL, prompt }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to transform.");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.image) {
+        throw new Error(data?.error || "Failed to transform.");
+      }
       setOutImage(data.image);
 
       const next = usageCount + 1;
       setUsageCount(next);
-      try { localStorage.setItem("cloudit-usage", String(next)); } catch {}
+      try {
+        localStorage.setItem("cloudit-usage", String(next));
+      } catch {}
     } catch (err) {
       setError(err.message || "Something went wrong.");
     } finally {
@@ -126,14 +155,32 @@ export default function App() {
             <span className="badge">beta</span>
           </a>
           <div className="actions">
-            <div className="usage-pill" title="Rough estimate at 1024×1024 price">
-              <span>{usageCount} {usageCount === 1 ? "image" : "images"}</span>
+            <div
+              className="usage-pill"
+              title="Rough estimate at 1024×1024 price"
+            >
+              <span>
+                {usageCount} {usageCount === 1 ? "image" : "images"}
+              </span>
               <span className="dot" />
               <span>~${spent.toFixed(2)}</span>
             </div>
-            <a className="btn-x" href="https://x.com/your_handle" target="_blank" rel="noreferrer">
-              <svg width="16" height="16" viewBox="0 0 1200 1227" aria-hidden="true">
-                <path fill="currentColor" d="M714 519 1120 0H986L676 389 445 0H0l421 651L72 1227h134l332-428 246 428h445L714 519Zm-117 151-38-63L213 109H374l200 339 37 63 352 595H802l-205-356Z"/>
+            <a
+              className="btn-x"
+              href="https://x.com/your_handle"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 1200 1227"
+                aria-hidden="true"
+              >
+                <path
+                  fill="currentColor"
+                  d="M714 519 1120 0H986L676 389 445 0H0l421 651L72 1227h134l332-428 246 428h445L714 519Zm-117 151-38-63L213 109H374l200 339 37 63 352 595H802l-205-356Z"
+                />
               </svg>
               Follow
             </a>
@@ -141,14 +188,22 @@ export default function App() {
         </header>
 
         <section className="hero">
-          <h1 style={{marginTop:0, marginBottom:6}}>Cloudify your profile picture ☁️</h1>
-          <div className="subtle" style={{marginBottom:16}}>
-            Upload a PNG/JPG/WEBP. We’ll turn it into a realistic cloud sculpture in the sky.
+          <h1 style={{ marginTop: 0, marginBottom: 6 }}>
+            Cloudify your profile picture ☁️
+          </h1>
+          <div className="subtle" style={{ marginBottom: 16 }}>
+            Upload a PNG/JPG/WEBP. We’ll turn it into a realistic cloud
+            sculpture in the sky.
           </div>
 
           <div className="row">
             <div>
-              <div className="dropzone" onDrop={onDrop} onDragOver={onDragOver} onClick={onPick}>
+              <div
+                className="dropzone"
+                onDrop={onDrop}
+                onDragOver={onDragOver}
+                onClick={onPick}
+              >
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -156,12 +211,16 @@ export default function App() {
                   style={{ display: "none" }}
                   onChange={onFile}
                 />
-                <p><strong>Click to upload</strong> or drag & drop an image</p>
+                <p>
+                  <strong>Click to upload</strong> or drag & drop an image
+                </p>
                 <p className="subtle">(Recommended ≤ 6MB)</p>
               </div>
 
               <div className="controls">
-                <label style={{ fontSize: 14 }} className="subtle">Prompt (optional)</label>
+                <label style={{ fontSize: 14 }} className="subtle">
+                  Prompt (optional)
+                </label>
                 <textarea
                   className="input"
                   rows="3"
@@ -172,10 +231,18 @@ export default function App() {
                   <button className="btn" disabled={loading} onClick={transform}>
                     {loading ? "Transforming..." : "Transform"}
                   </button>
-                  <button className="btn secondary" disabled={!outImage} onClick={download}>
+                  <button
+                    className="btn secondary"
+                    disabled={!outImage}
+                    onClick={download}
+                  >
                     Download result
                   </button>
-                  <button className="btn secondary" disabled={!outImage} onClick={shareToX}>
+                  <button
+                    className="btn secondary"
+                    disabled={!outImage}
+                    onClick={shareToX}
+                  >
                     Share to X
                   </button>
                 </div>
@@ -184,9 +251,24 @@ export default function App() {
             </div>
 
             <div className="preview">
-              <div className="imgbox">{srcPreview ? <img src={srcPreview} alt="source" /> : <span>Source preview</span>}</div>
-              <div className="imgbox">{outImage ? <img src={outImage} alt="result" /> : <span>Result will appear here</span>}</div>
-              <div className="footer">Images are processed server-side via Netlify Functions (your API key stays private).</div>
+              <div className="imgbox">
+                {srcPreview ? (
+                  <img src={srcPreview} alt="source" />
+                ) : (
+                  <span>Source preview</span>
+                )}
+              </div>
+              <div className="imgbox">
+                {outImage ? (
+                  <img src={outImage} alt="result" />
+                ) : (
+                  <span>Result will appear here</span>
+                )}
+              </div>
+              <div className="footer">
+                Images are processed server-side via Netlify Functions (your API
+                key stays private).
+              </div>
             </div>
           </div>
         </section>
