@@ -5,4 +5,6 @@
 
 [functions]
   node_bundler = "esbuild"
+
+[functions."transform"]
   timeout = 26
