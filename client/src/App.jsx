@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./app.css";
 
-const DEFAULT_PROMPT =
+// NOTE: Prompt is enforced on the SERVER (functions/api/transform.js).
+// We keep a local constant only to remind ourselves, but we do not send
+// or render it in the UI anymore.
+const SERVER_PROMPT =
   "I will send you pictures of fictional characters and you will recreate them like they are made of clouds in the sky, realistic style";
-
-const PRICE_PER_IMAGE_1024 = 0.016; // rough estimate per image
 
 export default function App() {
   const fileInputRef = useRef(null);
@@ -12,11 +13,10 @@ export default function App() {
   const [srcPreview, setSrcPreview] = useState(null);
   const [outImage, setOutImage] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [error, setError] = useState("");
 
+  // keep a usage counter locally (hidden), useful for your own insights
   const [usageCount, setUsageCount] = useState(0);
-  const [spent, setSpent] = useState(0);
 
   useEffect(() => {
     try {
@@ -24,10 +24,6 @@ export default function App() {
       setUsageCount(Number.isFinite(saved) ? saved : 0);
     } catch {}
   }, []);
-
-  useEffect(() => {
-    setSpent(usageCount * PRICE_PER_IMAGE_1024);
-  }, [usageCount]);
 
   const onPick = () => fileInputRef.current?.click();
 
@@ -60,7 +56,7 @@ export default function App() {
 
   const onDragOver = (e) => e.preventDefault();
 
-  // Utility to resize + convert file to base64
+  // Resize + convert to base64 for faster uploads
   const fileToDataURLResized = (f, maxSize, quality) =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -104,14 +100,14 @@ export default function App() {
     try {
       const imageDataURL = await fileToDataURLResized(file, 1024, 0.9);
 
-      // ⬇️ Cloudflare Pages endpoint
+      // Cloudflare Pages endpoint
       const res = await fetch("/api/transform", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageDataURL, prompt }),
+        // We no longer send prompt; it’s enforced server-side.
+        body: JSON.stringify({ imageDataURL }),
       });
 
-      // Safer parse: handle non-JSON responses gracefully
       const ct = res.headers.get("content-type") || "";
       const data = ct.includes("application/json") ? await res.json() : {};
       if (!res.ok || !data.image) {
@@ -120,10 +116,19 @@ export default function App() {
 
       setOutImage(data.image);
 
+      // Update hidden usage count
       const next = usageCount + 1;
       setUsageCount(next);
+      try { localStorage.setItem("cloudit-usage", String(next)); } catch {}
+
+      // Fire analytics beacon (no-op if analytics function not configured)
       try {
-        localStorage.setItem("cloudit-usage", String(next));
+        const payload = JSON.stringify({
+          type: "generation",
+          ts: Date.now(),
+          day: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+        });
+        navigator.sendBeacon("/api/analytics", new Blob([payload], { type: "application/json" }));
       } catch {}
     } catch (err) {
       setError(err.message || "Something went wrong.");
@@ -140,12 +145,9 @@ export default function App() {
     a.click();
   };
 
-  const shareToX = () => {
-    const text = encodeURIComponent(
-      "I just cloudified my profile picture with cloudit ☁️\nTry it here: YOUR_SITE_URL"
-    );
-    const url = `https://twitter.com/intent/tweet?text=${text}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+  const shareToCommunity = () => {
+    // Replace this with your community link (Discord, Farcaster, etc.)
+    window.open("https://your-community.example.com", "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -156,48 +158,28 @@ export default function App() {
           <a className="brand" href="/">
             <div className="logo" />
             <div className="title">cloudit</div>
-            <span className="badge">beta</span>
+            {/* beta badge removed */}
           </a>
           <div className="actions">
-            <div
-              className="usage-pill"
-              title="Rough estimate at 1024×1024 price"
-            >
-              <span>
-                {usageCount} {usageCount === 1 ? "image" : "images"}
-              </span>
-              <span className="dot" />
-              <span>~${spent.toFixed(2)}</span>
-            </div>
+            {/* spending pill removed */}
             <a
               className="btn-x"
-              href="https://x.com/your_handle"
+              href="https://buymeacoffee.com/yourname" // <- change to your support link
               target="_blank"
               rel="noreferrer"
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 1200 1227"
-                aria-hidden="true"
-              >
-                <path
-                  fill="currentColor"
-                  d="M714 519 1120 0H986L676 389 445 0H0l421 651L72 1227h134l332-428 246 428h445L714 519Zm-117 151-38-63L213 109H374l200 339 37 63 352 595H802l-205-356Z"
-                />
-              </svg>
-              Follow
+              💖 Support the Dev
             </a>
           </div>
         </header>
 
         <section className="hero">
           <h1 style={{ marginTop: 0, marginBottom: 6 }}>
-            Cloudify your profile picture ☁️
+            Cloudify your Twitter/X profile picture ☁️
           </h1>
           <div className="subtle" style={{ marginBottom: 16 }}>
-            Upload a PNG/JPG/WEBP. We’ll turn it into a realistic cloud
-            sculpture in the sky.
+            Upload a PNG/JPG/WEBP of your current PFP and we’ll turn it into a fluffy
+            cloud sculpture in the sky.
           </div>
 
           <div className="row">
@@ -222,15 +204,7 @@ export default function App() {
               </div>
 
               <div className="controls">
-                <label style={{ fontSize: 14 }} className="subtle">
-                  Prompt (optional)
-                </label>
-                <textarea
-                  className="input"
-                  rows="3"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                />
+                {/* Prompt UI removed */}
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button className="btn" disabled={loading} onClick={transform}>
                     {loading ? "Transforming..." : "Transform"}
@@ -245,16 +219,23 @@ export default function App() {
                   <button
                     className="btn secondary"
                     disabled={!outImage}
-                    onClick={shareToX}
+                    onClick={shareToCommunity}
+                    title="Share your result with the community"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
                   >
-                    Share to X
+                    {/* Simple community “chat bubbles” icon */}
+                    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                      <path fill="currentColor" d="M2 11a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1a6 6 0 0 1-6 6H9l-4 3v-3.5A6 6 0 0 1 2 12v-1z"/>
+                    </svg>
+                    Share in the community
                   </button>
                 </div>
-                {error && <div className="error">{error}</div>}
+                {error && <div className="error" style={{ marginTop: 8 }}>{error}</div>}
               </div>
             </div>
 
-            <div className="preview">
+            <div className="preview" style={{ position: "relative" }}>
+              {/* LEFT preview kept in your design above the result */}
               <div className="imgbox">
                 {srcPreview ? (
                   <img src={srcPreview} alt="source" />
@@ -262,21 +243,51 @@ export default function App() {
                   <span>Source preview</span>
                 )}
               </div>
-              <div className="imgbox">
+
+              {/* RESULT preview */}
+              <div className="imgbox" style={{ position: "relative" }}>
                 {outImage ? (
                   <img src={outImage} alt="result" />
                 ) : (
                   <span>Result will appear here</span>
                 )}
+                {/* Loading overlay/spinner */}
+                {loading && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: "rgba(0,0,0,0.35)",
+                      display: "grid",
+                      placeItems: "center",
+                      borderRadius: 16
+                    }}
+                  >
+                    <div
+                      className="spinner"
+                      style={{
+                        width: 40,
+                        height: 40,
+                        border: "4px solid #fff",
+                        borderTopColor: "transparent",
+                        borderRadius: "50%",
+                        animation: "spin 0.9s linear infinite"
+                      }}
+                    />
+                  </div>
+                )}
               </div>
-              <div className="footer">
-                Images are processed server-side via Cloudflare Pages Functions
-                (your API key stays private).
-              </div>
+
+              {/* Footer note removed as requested */}
             </div>
           </div>
         </section>
       </div>
+
+      {/* spinner keyframes (kept here to avoid touching your CSS file) */}
+      <style>
+        {`@keyframes spin { to { transform: rotate(360deg); } }`}
+      </style>
     </>
   );
 }
