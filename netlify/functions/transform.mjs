@@ -74,7 +74,7 @@ export default async (req, _ctx) => {
       model: "gpt-image-1",
       image: apiFile,
       prompt,
-      size: "1024x1024",
+      size: "400x400",
     });
 
     const b64 = result?.data?.[0]?.b64_json;
