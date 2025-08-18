@@ -1,18 +1,32 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./app.css";
 
-// Prompt is enforced on the SERVER (functions/api/transform.js)
+// Prompt enforced server-side (functions/api/transform.js)
 const SERVER_PROMPT =
   "I will send you pictures of fictional characters and you will recreate them like they are made of clouds in the sky, realistic style";
 
+// 🔧 Set these:
+const CONTRACT_ADDRESS = "SOON ON HEAVEN.XYZ";
+const BUY_LINK = "https://heaven.xyz/"; // e.g. Uniswap/Raydium
+
 export default function App() {
   const fileInputRef = useRef(null);
+  const audioRef = useRef(null);
+
   const [file, setFile] = useState(null);
   const [srcPreview, setSrcPreview] = useState(null);
   const [outImage, setOutImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
   const [usageCount, setUsageCount] = useState(0);
+
+  // music state
+  const [muted, setMuted] = useState(false);
+  const [audioBootstrapped, setAudioBootstrapped] = useState(false);
+
+  // contract copy feedback
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     try {
@@ -20,6 +34,24 @@ export default function App() {
       setUsageCount(Number.isFinite(saved) ? saved : 0);
     } catch {}
   }, []);
+
+  // Try to start music after first user gesture (autoplay policies)
+  useEffect(() => {
+    const boot = async () => {
+      if (audioBootstrapped || !audioRef.current) return;
+      try {
+        audioRef.current.volume = 0.35;
+        audioRef.current.muted = muted;
+        await audioRef.current.play();
+        setAudioBootstrapped(true);
+      } catch {
+        // If browser blocks autoplay, we’ll try again on next user gesture
+      }
+    };
+    const onFirstGesture = () => boot();
+    window.addEventListener("pointerdown", onFirstGesture, { once: true });
+    return () => window.removeEventListener("pointerdown", onFirstGesture);
+  }, [audioBootstrapped, muted]);
 
   const onPick = () => fileInputRef.current?.click();
 
@@ -140,6 +172,34 @@ export default function App() {
     window.open("https://x.com/i/communities/1957390468272001500/", "_blank", "noopener,noreferrer");
   };
 
+  const copyContract = async () => {
+    try {
+      await navigator.clipboard.writeText(CONTRACT_ADDRESS);
+    } catch {
+      const t = document.createElement("textarea");
+      t.value = CONTRACT_ADDRESS;
+      document.body.appendChild(t);
+      t.select();
+      document.execCommand("copy");
+      document.body.removeChild(t);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  const toggleMute = async () => {
+    setMuted((m) => !m);
+    if (audioRef.current) {
+      audioRef.current.muted = !audioRef.current.muted;
+      try {
+        if (!audioBootstrapped) {
+          await audioRef.current.play();
+          setAudioBootstrapped(true);
+        }
+      } catch {}
+    }
+  };
+
   return (
     <>
       {/* FULL-SCREEN BACKGROUND VIDEO */}
@@ -182,8 +242,40 @@ export default function App() {
         />
       </div>
 
-      {/* IMPORTANT: remove the old clouds layer */}
-      {/* <div className="clouds" />  <-- delete / keep commented out */}
+      {/* Background music */}
+      <audio ref={audioRef} src="/music.mp3" loop />
+
+      {/* Floating mute/unmute toggle */}
+      <button
+        type="button"
+        onClick={toggleMute}
+        title={muted ? "Unmute music" : "Mute music"}
+        style={{
+          position: "fixed",
+          right: 16,
+          bottom: 16,
+          zIndex: 10,
+          padding: "10px 14px",
+          borderRadius: 12,
+          border: "1px solid rgba(255,255,255,0.18)",
+          background: "rgba(17,25,40,0.6)",
+          backdropFilter: "blur(10px)",
+          color: "#fff",
+          cursor: "pointer",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+          {muted ? (
+            <path fill="currentColor" d="M5 9v6h4l5 5V4L9 9H5Zm11.59 3 2.7 2.7-1.41 1.41L15.17 13l-2.71 2.71-1.41-1.41L13.76 11 11.05 8.29l1.41-1.41L15.17 9l2.71-2.71 1.41 1.41L16.59 11Z"/>
+          ) : (
+            <path fill="currentColor" d="M5 9v6h4l5 5V4L9 9H5Zm9.5 3a3.5 3.5 0 0 0-2.5-3.35v6.69A3.5 3.5 0 0 0 14.5 12Zm2.5 0a6 6 0 0 0-4-5.65v2.1a4 4 0 0 1 0 7.1v2.1A6 6 0 0 0 17 12Z"/>
+          )}
+        </svg>
+        {muted ? "Muted" : "Music on"}
+      </button>
 
       {/* APP CONTENT ABOVE VIDEO */}
       <div className="container" style={{ position: "relative", zIndex: 1 }}>
@@ -207,6 +299,7 @@ export default function App() {
           </div>
         </header>
 
+        {/* ====== Section 1: PFP Generator ====== */}
         <section className="hero">
           <h1 style={{ marginTop: 0, marginBottom: 6 }}>
             Cloudify your Twitter/X profile picture ☁️
@@ -295,6 +388,54 @@ export default function App() {
                 )}
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* ====== Section 2: Token / Contract (separate card below) ====== */}
+        <section className="hero" aria-labelledby="token" style={{ marginTop: 24 }}>
+          <h2 id="token" style={{ marginTop: 0, marginBottom: 10 }}>$CLOUDIT Coin</h2>
+          <div
+            className="contract-row"
+            style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              flexWrap: "wrap"
+            }}
+          >
+            <label className="subtle" style={{ minWidth: 140 }}>Contract address</label>
+
+            <input
+              className="input"
+              style={{
+                flex: "1 1 420px",
+                minWidth: 280,
+                fontFamily: "monospace",
+                fontSize: 14
+              }}
+              value={CONTRACT_ADDRESS}
+              readOnly
+            />
+
+            <button
+              className="btn secondary"
+              type="button"
+              onClick={copyContract}
+              title="Copy to clipboard"
+              style={{ minWidth: 120 }}
+            >
+              {copied ? "Copied!" : "Copy"}
+            </button>
+
+            <a
+              className="btn"
+              href={BUY_LINK}
+              target="_blank"
+              rel="noreferrer"
+              style={{ whiteSpace: "nowrap", textDecoration: "none" }}
+            >
+              Buy $CLOUDIT
+            </a>
           </div>
         </section>
       </div>
