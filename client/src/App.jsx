@@ -3,7 +3,7 @@ import "./app.css";
 
 // Prompt enforced server-side (functions/api/transform.js)
 const SERVER_PROMPT =
-  "I will send you pictures of fictional characters and you will recreate them like they are made of clouds in the sky, realistic style";
+  "I will send you pictures of fictional characters and you will recreate them like they are in heaven in an angel style, keep them in cartoon style.";
 
 // 🔧 Set these:
 const CONTRACT_ADDRESS = "FzsDcbZ9b5H7SaPvkXoxSQokv3KZer6zBGRDiaJCP777";
