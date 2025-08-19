@@ -6,8 +6,8 @@ const SERVER_PROMPT =
   "I will send you pictures of fictional characters and you will recreate them like they are in heaven in an angel style, keep them in cartoon style.";
 
 // 🔧 Set these:
-const CONTRACT_ADDRESS = "Soon On Heaven Dex";
-const BUY_LINK = "https://heaven.xyz"; // e.g. Uniswap/Raydium
+const CONTRACT_ADDRESS = "DKy9sYn7ZfJwRPWsTR7L97noGF1BvMntoxX7G7V1f777";
+const BUY_LINK = "https://heaven.xyz/token/DKy9sYn7ZfJwRPWsTR7L97noGF1BvMntoxX7G7V1f777"; // e.g. Uniswap/Raydium
 
 export default function App() {
   const fileInputRef = useRef(null);
