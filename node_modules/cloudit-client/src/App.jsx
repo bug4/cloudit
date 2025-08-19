@@ -6,8 +6,8 @@ const SERVER_PROMPT =
   "I will send you pictures of fictional characters and you will recreate them like they are in heaven in an angel style, keep them in cartoon style.";
 
 // 🔧 Set these:
-const CONTRACT_ADDRESS = "FzsDcbZ9b5H7SaPvkXoxSQokv3KZer6zBGRDiaJCP777";
-const BUY_LINK = "https://heaven.xyz/token/CFZ3XT2wgueysf5rtPWLJiUuBWZUrxN4Ms6MGL2XGcGh"; // e.g. Uniswap/Raydium
+const CONTRACT_ADDRESS = "Soon On Heaven Dex";
+const BUY_LINK = "https://heaven.xyz"; // e.g. Uniswap/Raydium
 
 export default function App() {
   const fileInputRef = useRef(null);
@@ -164,12 +164,12 @@ export default function App() {
     if (!outImage) return;
     const a = document.createElement("a");
     a.href = outImage;
-    a.download = "cloudit.png";
+    a.download = "angelifyed.png";
     a.click();
   };
 
   const shareToCommunity = () => {
-    window.open("https://x.com/i/communities/1957390468272001500/", "_blank", "noopener,noreferrer");
+    window.open("https://x.com/i/communities/", "_blank", "noopener,noreferrer");
   };
 
   const copyContract = async () => {
@@ -282,7 +282,7 @@ export default function App() {
         <header className="header">
           <a className="brand" href="/">
             <div className="logo" />
-            <div className="title">cloudit</div>
+            <div className="title">Angelify Cult</div>
           </a>
           <div className="actions">
             <a className="btn-x" href="https://x.com/bug4sol" target="_blank" rel="noreferrer">
@@ -294,7 +294,7 @@ export default function App() {
               target="_blank"
               rel="noreferrer"
             >
-              👥 CloudIt Community
+              👥 Angelify Community
             </a>
           </div>
         </header>
@@ -302,11 +302,11 @@ export default function App() {
         {/* ====== Section 1: PFP Generator ====== */}
         <section className="hero">
           <h1 style={{ marginTop: 0, marginBottom: 6 }}>
-            Cloudify your Twitter/X profile picture ☁️
+            Angelify your Twitter/X profile picture 
           </h1>
           <div className="subtle" style={{ marginBottom: 16 }}>
-            Upload a PNG/JPG/WEBP of your current PFP and we’ll turn it into a fluffy
-            cloud sculpture in the sky.
+            Upload a PNG/JPG/WEBP of your current PFP and we’ll turn it into a angelifyed
+            sculpture in the sky.
           </div>
 
           <div className="row">
@@ -393,7 +393,7 @@ export default function App() {
 
         {/* ====== Section 2: Token / Contract (separate card below) ====== */}
         <section className="hero" aria-labelledby="token" style={{ marginTop: 24 }}>
-          <h2 id="token" style={{ marginTop: 0, marginBottom: 10 }}>$CLOUDIT Coin</h2>
+          <h2 id="token" style={{ marginTop: 0, marginBottom: 10 }}>$Angelify Coin</h2>
           <div
             className="contract-row"
             style={{
@@ -434,7 +434,7 @@ export default function App() {
               rel="noreferrer"
               style={{ whiteSpace: "nowrap", textDecoration: "none" }}
             >
-              Buy $CLOUDIT
+              Buy $Angelify
             </a>
           </div>
         </section>

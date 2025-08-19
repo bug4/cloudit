@@ -57,20 +57,13 @@ body {
   text-decoration: none;
   color: var(--text);
 }
-.logo {
-  width: 36px; height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(145deg, #cfe4ff, #a2c4ff);
-  box-shadow: 0 6px 24px rgba(123, 165, 255, 0.35), inset 0 0 12px rgba(255,255,255,0.6);
-  position: relative;
-}
-.logo::after {
-  content: "";
-  position: absolute; inset: 6px 8px auto auto;
-  width: 12px; height: 12px; border-radius: 50%;
-  background: white; opacity: 0.7;
-}
-.title { font-weight: 800; letter-spacing: 0.3px; font-size: 20px; }
+
+.title { font-weight: 800; letter-spacing: 0.3px; font-size: 30px;
+text-shadow: 
+    0 0 3px rgba(255, 255, 255, 0.8),
+    0 0 6px rgba(255, 255, 255, 0.6),
+    0 0 12px rgba(255, 255, 255, 0.4);
+} 
 .badge {
   padding: 4px 8px; border-radius: 999px;
   background: rgba(143,183,255,0.18);
@@ -161,7 +154,7 @@ body {
 .imgbox {
   border-radius: 16px; overflow: hidden;
   border: 1px solid rgba(255,255,255,0.12);
-  background: #87CEEB;
+  background: #FFEA99;
   min-height: 320px; display: grid; place-items: center;
 }
 img { max-width: 100%; height: auto; display: block; }
