@@ -61,7 +61,7 @@ export const onRequestPost = async ({ request, env }) => {
 
     // Fixed cloudifying prompt (kept server-side)
     const prompt =
-      "I will send you pictures of fictional characters and you will recreate them like they are made of clouds in the sky, realistic style";
+      "I will send you pictures of fictional characters and you will recreate them like they are in heaven in an angel style, keep them in cartoon style.";
 
     // Build multipart/form-data for OpenAI Images Edit
     const form = new FormData();
