@@ -169,7 +169,7 @@ export default function App() {
   };
 
   const shareToCommunity = () => {
-    window.open("https://x.com/i/communities/", "_blank", "noopener,noreferrer");
+    window.open("https://x.com/i/communities/1957758449162371157", "_blank", "noopener,noreferrer");
   };
 
   const copyContract = async () => {
@@ -285,12 +285,12 @@ export default function App() {
             <div className="title">Angelify Cult</div>
           </a>
           <div className="actions">
-            <a className="btn-x" href="https://x.com/bug4sol" target="_blank" rel="noreferrer">
-              ❤️ Support the Dev
+            <a className="btn-x" href="https://x.com/AngelifyHeaven" target="_blank" rel="noreferrer">
+              Follow Us
             </a>
             <a
               className="btn-x"
-              href="https://x.com/i/communities/1957390468272001500/"
+              href="https://x.com/i/communities/1957758449162371157"
               target="_blank"
               rel="noreferrer"
             >
